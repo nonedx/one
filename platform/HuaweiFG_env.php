@@ -6,7 +6,7 @@ global $contextUserData;
 
 function printInput($event, $context)
 {
-    $tmp['RequestID'] = $context->getRequestID();
+    $tmp['eventID'] = $context->geteventID();
     $tmp['RemainingTimeInMilliSeconds'] = $context->getRemainingTimeInMilliSeconds();
     $tmp['AccessKey'] = $context->getAccessKey();
     $tmp['SecretKey'] = $context->getSecretKey();
@@ -17,7 +17,7 @@ function printInput($event, $context)
     $tmp['MemorySize'] = $context->getMemorySize();
     $tmp['CPUNumber'] = $context->getCPUNumber();
     $tmp['ProjectID'] = $context->getProjectID();
-    $tmp['Package'] = $context->getPackage();
+    $tmp['Package'] = $context->Package();
     $tmp['Token'] = $context->getToken();
     $tmp['Logger'] = $context->getLogger();
 
@@ -51,13 +51,13 @@ function GetPathSetting($event, $context)
     $_SERVER['ProjectID'] = $context->getProjectID();
     $host_name = $event['headers']['host'];
     $_SERVER['HTTP_HOST'] = $host_name;
-    $path = path_format('/' . $event['pathParameters']['']);
+    $path = path_format($event['pathParameters'][''].'/');
     $path = str_replace('+', '%2B', $path);
-    $_SERVER['base_path'] = path_format($event['path']);
+    $_SERVER['base_path'] = path_format($event['path'].'/');
     if (  $_SERVER['base_path'] == $path ) {
         $_SERVER['base_path'] = '/';
     } else {
-        $_SERVER['base_path'] = substr($_SERVER['base_path'], 0, strlen($_SERVER['base_path'])-strlen($path));
+        $_SERVER['base_path'] = substr($_SERVER['base_path'], 0, -strlen($path));
         if ($_SERVER['base_path']=='') $_SERVER['base_path'] = '/';
     }
     //$_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
@@ -75,6 +75,7 @@ function GetPathSetting($event, $context)
     $_SERVER['HTTP_TRANSLATE'] = $event['headers']['translate'];//'f'
     $_SERVER['HTTP_IF_MODIFIED_SINCE'] = $event['headers']['if-modified-since'];
     $_SERVER['REQUEST_METHOD'] = $event['httpMethod'];
+    $_SERVER['_APP_SHARE_DIR'] = '/var/share/CFF/processrouter';
     return $path;
 }
 

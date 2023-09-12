@@ -1,7 +1,6 @@
 <?php
 //error_reporting(E_ALL & ~E_NOTICE);
 error_reporting(0);
-
 include 'vendor/autoload.php';
 include 'conststr.php';
 include 'common.php';
@@ -9,46 +8,18 @@ include 'common.php';
 date_default_timezone_set('UTC');
 //echo '<pre>'. json_encode($_SERVER, JSON_PRETTY_PRINT).'</pre>';
 //echo '<pre>'. json_encode($_ENV, JSON_PRETTY_PRINT).'</pre>';
-global $platform;
-$platform = checkPlatform();
-function checkPlatform() {
-    if (isset($_SERVER['USER'])&&$_SERVER['USER']==='qcloud')
-        return 'SCF';
-    if (isset($_SERVER['FC_FUNC_CODE_PATH']))
-        return 'FC';
-    if (isset($_SERVER['RUNTIME_LOG_PATH']) && $_SERVER['RUNTIME_LOG_PATH']=='/home/snuser/log')
-        return 'FG';
-    if (isset($_SERVER['BCE_CFC_RUNTIME_NAME']) && $_SERVER['BCE_CFC_RUNTIME_NAME']=='php7')
-        return 'CFC';
-    if (isset($_SERVER['HEROKU_APP_DIR'])&&$_SERVER['HEROKU_APP_DIR']==='/app')
-        return 'Heroku';
-    if (isset($_SERVER['DOCUMENT_ROOT'])&&$_SERVER['DOCUMENT_ROOT']==='/var/task/user')
-        return 'Vercel';
-    if (isset($_SERVER['DOCUMENT_ROOT'])&&substr($_SERVER['DOCUMENT_ROOT'], 0, 13)==='/home/runner/')
-        return 'Replit';
-    return 'Normal';
-}
-function writebackPlatform($p) {
-    if ('SCF'==$p) $_SERVER['USER']='qcloud';
-    if ('FC'==$p) $_SERVER['FC_FUNC_CODE_PATH']=getenv('FC_FUNC_CODE_PATH');
-    if ('FG'==$p) $_SERVER['RUNTIME_LOG_PATH']='/home/snuser/log';
-    if ('CFC'==$p) $_SERVER['BCE_CFC_RUNTIME_NAME']='php7';
-    //if ('Heroku'==$p) $_SERVER['HEROKU_APP_DIR']='/app';
-    if ('Vercel'==$p) $_SERVER['DOCUMENT_ROOT']='/var/task/user';
-    //if ('Replit'==$p) $_SERVER['DOCUMENT_ROOT']='/home/runner/';
-}
-if ('SCF'==$platform) {
+if (isset($_SERVER['USER'])&&$_SERVER['USER']==='qcloud') {
     if (getenv('ONEMANAGER_CONFIG_SAVE')=='file') include 'platform/TencentSCF_file.php';
     else include 'platform/TencentSCF_env.php';
-} elseif ('FC'==$platform) {
+} elseif (isset($_SERVER['FC_FUNC_CODE_PATH'])) {
     include 'platform/AliyunFC.php';
-} elseif ('FG'==$platform) {
+} elseif (isset($_SERVER['_APP_SHARE_DIR']) && $_SERVER['_APP_SHARE_DIR']=='/var/share/CFF/processrouter') {
     //if (getenv('ONEMANAGER_CONFIG_SAVE')=='file') include 'platform/HuaweiFG_file.php';
     //else include 'platform/HuaweiFG_env.php';
     echo 'FG' . PHP_EOL;
-} elseif ('CFC'==$platform) {
+} elseif (isset($_SERVER['BCE_CFC_RUNTIME_NAME']) && $_SERVER['BCE_CFC_RUNTIME_NAME']=='php7') {
     include 'platform/BaiduCFC.php';
-} elseif ('Heroku'==$platform) {
+} elseif (isset($_SERVER['HEROKU_APP_DIR'])&&$_SERVER['HEROKU_APP_DIR']==='/app') {
     include 'platform/Heroku.php';
     $path = getpath();
     //echo 'path:'. $path;
@@ -62,11 +33,9 @@ if ('SCF'==$platform) {
     http_response_code($re['statusCode']);
     if ($re['isBase64Encoded']) echo base64_decode($re['body']);
     else echo $re['body'];
-} elseif ('Vercel'==$platform) {
+} elseif (isset($_SERVER['DOCUMENT_ROOT'])&&$_SERVER['DOCUMENT_ROOT']==='/var/task/user') {
     if (getenv('ONEMANAGER_CONFIG_SAVE')=='env') include 'platform/Vercel_env.php';
     else include 'platform/Vercel.php';
-
-    writebackPlatform('Vercel');
     $path = getpath();
     //echo 'path:'. $path;
     $_GET = getGET();
@@ -79,7 +48,7 @@ if ('SCF'==$platform) {
     http_response_code($re['statusCode']);
     if ($re['isBase64Encoded']) echo base64_decode($re['body']);
     else echo $re['body'];
-} elseif ('Replit'==$platform) {
+} elseif (isset($_SERVER['DOCUMENT_ROOT'])&&substr($_SERVER['DOCUMENT_ROOT'], 0, 13)==='/home/runner/') {
     include 'platform/Replit.php';
 
     $path = getpath();
@@ -129,7 +98,6 @@ function main_handler($event, $context)
     unset($_GET);
     unset($_COOKIE);
     unset($_SERVER);
-    writebackPlatform('SCF');
     GetGlobalVariable($event);
     //echo '<pre>'. json_encode($_COOKIE, JSON_PRETTY_PRINT).'</pre>';
     $path = GetPathSetting($event, $context);
@@ -140,8 +108,7 @@ function main_handler($event, $context)
 // Aliyun FC & Huawei FG & Baidu CFC
 function handler($event, $context)
 {
-    global $platform;
-    if ('FC'==$platform) {
+    if (isset($_SERVER['FC_FUNC_CODE_PATH'])) {
         // Aliyun FC
         set_error_handler("myErrorHandler");
         $tmp = array(
@@ -160,7 +127,6 @@ function handler($event, $context)
         unset($_GET);
         unset($_COOKIE);
         unset($_SERVER);
-        writebackPlatform('FC');
         GetGlobalVariable($event);
         $path = GetPathSetting($event, $context);
 
@@ -168,7 +134,7 @@ function handler($event, $context)
 
         return new RingCentral\Psr7\Response($re['statusCode'], $re['headers'], ($re['isBase64Encoded']?base64_decode($re['body']):$re['body']));
 
-    } elseif ('FG'==$platform) {
+    } elseif ($_SERVER['_APP_SHARE_DIR']=='/var/share/CFF/processrouter') {
         // Huawei FG
         global $contextUserData;
         $contextUserData = $context;
@@ -183,14 +149,13 @@ function handler($event, $context)
         unset($_GET);
         unset($_COOKIE);
         unset($_SERVER);
-        writebackPlatform('FG');
         GetGlobalVariable($event);
         //echo '<pre>'. json_encode($_COOKIE, JSON_PRETTY_PRINT).'</pre>';
         $path = GetPathSetting($event, $context);
 
         return main($path);
 
-    } elseif ('CFC'==$platform) {
+    } elseif ($_SERVER['BCE_CFC_RUNTIME_NAME']=='php7') {
         // Baidu CFC
         //$html = '<pre>'. json_encode($event, JSON_PRETTY_PRINT).'</pre>';
         //$html .= '<pre>'. json_encode($context, JSON_PRETTY_PRINT).'</pre>';
@@ -204,7 +169,6 @@ function handler($event, $context)
         unset($_GET);
         unset($_COOKIE);
         unset($_SERVER);
-        writebackPlatform('CFC');
         GetGlobalVariable($event);
         //echo '<pre>'. json_encode($_COOKIE, JSON_PRETTY_PRINT).'</pre>';
         $path = GetPathSetting($event, $context);
